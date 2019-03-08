@@ -56,7 +56,7 @@ namespace code_a_la_mode
             }
 
             IKitchen kitchen = new ArrayKitchen();
-            
+
             for (int i = 0; i < 7; i++)
             {
                 string kitchenLine = ReadInputLine();
@@ -68,7 +68,7 @@ namespace code_a_la_mode
             Console.Error.WriteLine($"Window POS: {kitchen.ItemPosition[Item.Window]}");
             Console.Error.WriteLine($"Blueberry Crate POS: {kitchen.ItemPosition[Item.BlueberryCrate]}");
             Console.Error.WriteLine($"Ice cream crate POS: {kitchen.ItemPosition[Item.IceCreamCrate]}");
-            
+
             // game loop
             while (true)
             {
@@ -106,6 +106,10 @@ namespace code_a_la_mode
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
 
+                Console.Error.WriteLine(DoAction(Action.Move, "Moving to 3 0", 3, 0));
+                Console.Error.WriteLine(DoAction(Action.Use, 0, 1));
+                Console.Error.WriteLine(DoAction(Action.Wait));
+
                 // MOVE x y
                 // USE x y
                 // WAIT
@@ -123,9 +127,14 @@ namespace code_a_la_mode
             return Constants.DessertStrings[dessert];
         }
 
-        private string DoAction(Action action, string message = "", params object[] args)
+        private static string DoAction(Action action, params object[] args)
         {
-            return $"{Constants.ActionStrings[action]}{string.Join(" ", args)}; {message}";
+            return $"{Constants.ActionStrings[action]} {string.Join(" ", args)}";
+        }
+
+        private static string DoAction(Action action, string message = "", params object[] args)
+        {
+            return $"{Constants.ActionStrings[action]} {string.Join(" ", args)}; {message}";
         }
     }
 
@@ -181,6 +190,29 @@ namespace code_a_la_mode
         Wait
     }
 
+    internal interface IGameAction
+    {
+        Action Action { get; }
+        string Message { get; set; }
+    }
+
+    internal struct GameAction
+    {
+        public Action Action => Action.Use;
+
+        private bool _includesPosition;
+
+        public Point Position { get; set; }
+
+        public string Message { get; set; }
+
+        public override string ToString()
+        {
+            string positionString = _includesPosition ? $"{Position.X} {Position.Y}" : "";
+            return $"{Constants.ActionStrings[Action]} {positionString}; {Message}";
+        }
+    }
+
     internal interface IKitchen
     {
         Dictionary<Item, Point> ItemPosition { get; }
@@ -228,7 +260,7 @@ namespace code_a_la_mode
             {
                 return;
             }
-            
+
             ItemPosition[item] = new Point(itemIndex, _addedLines);
         }
     }
