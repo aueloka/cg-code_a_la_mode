@@ -287,11 +287,14 @@ namespace code_a_la_mode
         };
         
         private static IDictionary<string, Requirements[]> RecipeLookup = new Dictionary<string, Requirements[]>();
-        
-        //TODO: Store Recipe
 
         public static Requirements[] GetRecipe(string item)
         {
+            if (RecipeLookup.ContainsKey(item))
+            {
+                return RecipeLookup[item];
+            }
+
             string[] items = item.Split(new[] {'-'}, StringSplitOptions.RemoveEmptyEntries);
             Requirements[] requirementsList = new Requirements[items.Length];
 
@@ -309,6 +312,7 @@ namespace code_a_la_mode
                 requirementsList[i] = CookBook[dessert];
             }
 
+            RecipeLookup[item] = requirementsList;
             return requirementsList;
         }
 
