@@ -153,22 +153,24 @@ namespace code_a_la_mode
     {
         public static readonly IDictionary<Dessert, Requirements> CookBook = new Dictionary<Dessert, Requirements>
         {
-            {Dessert.Blueberries, Requirements.SingleEquipmentRequirement(Equipment.BlueberryCrate)},
-            {Dessert.IceCream, Requirements.SingleEquipmentRequirement(Equipment.IceCreamCrate)},
-            {Dessert.RawTart, Requirements.DoubleDessertRequirement(Dessert.ChoppedDough, Dessert.Blueberry)},
+            {Dessert.Blueberries, Requirements.SingleEquipmentRequirement(Equipment.BlueberryCrate, Dessert.Blueberries)},
+            {Dessert.IceCream, Requirements.SingleEquipmentRequirement(Equipment.IceCreamCrate, Dessert.IceCream)},
+            {Dessert.RawTart, Requirements.DoubleDessertRequirement(Dessert.ChoppedDough, Dessert.Blueberry, Dessert.RawTart)},
             {
                 Dessert.ChoppedStrawberries,
-                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Strawberries, Equipment.ChoppingBoard)
+                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Strawberries, Equipment.ChoppingBoard, Dessert.ChoppedStrawberries)
             },
             {
                 Dessert.ChoppedDough,
-                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.ChoppingBoard)
+                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.ChoppingBoard, Dessert.ChoppedDough)
             },
-            {Dessert.Tart, Requirements.SingleDessertAndEquipmentRequirement(Dessert.RawTart, Equipment.Oven)},
-            {Dessert.Croissant, Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.Oven)},
+            {Dessert.Tart, Requirements.SingleDessertAndEquipmentRequirement(Dessert.RawTart, Equipment.Oven, Dessert.Tart)},
+            {Dessert.Croissant, Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.Oven, Dessert.Croissant)},
         };
 
         private static IDictionary<string, Composition> ItemComposition = new Dictionary<string, Composition>();
+        private static IDictionary<string, Requirements[]> ItemRequirements = new Dictionary<string, Requirements[]>();
+
 
         public static Composition GetComposition(string item)
         {
@@ -213,6 +215,24 @@ namespace code_a_la_mode
             composition.Desserts = desserts;
             ItemComposition[item] = composition;
             return composition;
+        }
+
+        public static Requirements[] GetRequirements(string item)
+        {
+            if (ItemRequirements.ContainsKey(item))
+            {
+                return ItemRequirements[item];
+            }
+
+            var composition = GetComposition(item);
+            Requirements[] requirements = new Requirements[composition.Desserts.Length];
+            for (int i = 0; i < composition.Desserts.Length; i++)
+            {
+                requirements[i] = CookBook[composition.Desserts[i]];
+            }
+
+            ItemRequirements[item] = requirements;
+            return requirements;
         }
     }
 
@@ -497,10 +517,14 @@ namespace code_a_la_mode
         }
     }
 
-    internal struct Requirements
+    internal class Requirements
     {
-        public Dessert[] Desserts { get; set; }
+        public Dessert[] Desserts { get; set; } = Array.Empty<Dessert>();
+
         public Equipment Equipment { get; set; }
+
+        public Dessert Result { get; set; }
+
         public Dessert FirstDessertByMinDifficulty
         {
             get
@@ -508,6 +532,7 @@ namespace code_a_la_mode
                 return Desserts.OrderBy(element => Chef.CookBook[element].Difficulty).First();
             }
         }
+
         public bool NeedsDesserts
         {
             get
@@ -533,7 +558,7 @@ namespace code_a_la_mode
             }
         }
 
-        public Requirements(bool usesEquipment = true) : this()
+        public Requirements(bool usesEquipment = true)
         {
             this.NeedsEquipment = usesEquipment;
         }
@@ -546,28 +571,31 @@ namespace code_a_la_mode
             };
         }
 
-        public static Requirements SingleEquipmentRequirement(Equipment equipment)
+        public static Requirements SingleEquipmentRequirement(Equipment equipment, Dessert result)
         {
             return new Requirements
             {
-                Equipment = equipment
+                Equipment = equipment,
+                Result = result
             };
         }
 
-        public static Requirements DoubleDessertRequirement(Dessert a, Dessert b)
+        public static Requirements DoubleDessertRequirement(Dessert a, Dessert b, Dessert result)
         {
             return new Requirements
             {
-                Desserts = new[] { a, b }
+                Desserts = new[] { a, b },
+                Result = result
             };
         }
 
-        public static Requirements SingleDessertAndEquipmentRequirement(Dessert dessert, Equipment equipment)
+        public static Requirements SingleDessertAndEquipmentRequirement(Dessert dessert, Equipment equipment, Dessert result)
         {
             return new Requirements
             {
                 Desserts = new[] { dessert },
-                Equipment = equipment
+                Equipment = equipment,
+                Result = result
             };
         }
     }
@@ -904,7 +932,6 @@ namespace code_a_la_mode
                 gameActions.Add(GameAction.UseAction(item.Key));
             }
 
-            //return gameActions.First();
             return gameActions.OrderByDescending((action) => actionEvaluator.Evaluate(kitchen, gameState, action)).First();
         }
     }
@@ -1112,10 +1139,14 @@ namespace code_a_la_mode
     internal class DefaultGameEvaluator : IGameEvaluator
     {
         private const double orderAwardCoef = 0.5;
-        private const double otherCompletenessCoef = 0.2;
-        private const double playerItemCompletenessCoef = 0.9;
+        private const double otherCompletenessCoef = 0;//0.2;
+        private const double playerItemCompletenessCoef = 0;//0.9;
         private const double travelDistanceCoef = 0.00;
         private const double ordersCountCoef = -10;
+        private const double completeRequirementsCoef = 0.6;
+        private const double requirementIngredientCoef = 0.4;
+        private const double playerCompleteRequirementsCoef = 0.8;
+        private const double playerRequirementIngredientCoef = 0.7;
 
         public double Evaluate(IKitchen kitchen, GameState gameState)
         {
@@ -1126,20 +1157,60 @@ namespace code_a_la_mode
             {
                 score -= order.AwardPoints / maxAward * orderAwardCoef;
                 var orderComposition = Chef.GetComposition(order.Item);
+                var orderRequirements = Chef.GetRequirements(order.Item);
+
 
                 foreach (var occupiedTable in gameState.OccupiedTables)
                 {
                     var tableItem = occupiedTable.Value;
+                    var tableItemComposition = Chef.GetComposition(tableItem);
                     double completenessScore = GetCompletenessScore(ref orderComposition, tableItem);
                     score += completenessScore * otherCompletenessCoef;
 
                     //TODO: combine distance in turns to completeness score
                     int distanceInTurns = kitchen.GetTravelDistance(gameState.Player.Position, occupiedTable.Key) / 4;
                     score -= distanceInTurns * travelDistanceCoef;
+
+                    foreach (var requirement in orderRequirements)
+                    {
+                        foreach (var dessert in tableItemComposition.Desserts)
+                        {
+                            if (dessert == requirement.Result)
+                            {
+                                score += 1 * completeRequirementsCoef;
+                            }
+
+                            if (requirement.Desserts.Contains(dessert))
+                            {
+                                score += 1 * requirementIngredientCoef;
+                            }
+                        }
+
+                    }
                 }
 
+                var playerItemComposition = Chef.GetComposition(gameState.Player.Item);
                 double playerItemScore = GetCompletenessScore(ref orderComposition, gameState.Player.Item);
                 score += playerItemScore * playerItemCompletenessCoef;
+
+                if (gameState.Player.Item != Constants.None)
+                {
+                    foreach (var requirement in orderRequirements)
+                    {
+                        foreach (var dessert in playerItemComposition.Desserts)
+                        {
+                            if (dessert == requirement.Result)
+                            {
+                                score += 1 * playerCompleteRequirementsCoef;
+                            }
+
+                            if (requirement.Desserts.Contains(dessert))
+                            {
+                                score += 1 * playerRequirementIngredientCoef;
+                            }
+                        }
+                    }
+                }
             }
 
             score /= gameState.WaitingOrders.Length;
@@ -1425,6 +1496,11 @@ namespace code_a_la_mode
 
         private bool UseDishwasher(ref string carriedItem, bool areDishesAvailable)
         {
+            if(carriedItem == Constants.DessertStrings[Dessert.Strawberries])
+            {
+                return false;
+            }
+
             if (carriedItem.StartsWith(Constants.Dish, StringComparison.InvariantCulture))
             {
                 carriedItem = Constants.Dish;
@@ -1476,6 +1552,7 @@ namespace code_a_la_mode
                 // the number of points awarded for delivering the food
                 int customerAward = int.Parse(inputs[1]);
                 Chef.GetComposition(customerItem);
+                Chef.GetRequirements(customerItem);
             }
 
             for (int i = 0; i < 7; i++)
