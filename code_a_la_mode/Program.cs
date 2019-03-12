@@ -253,6 +253,8 @@ namespace code_a_la_mode
                         return item == Constants.DessertStrings[Dessert.Strawberries] ||
                             item == Constants.DessertStrings[Dessert.Dough];
                     }
+                case Equipment.StrawberryCrate:
+                    return item == Constants.None;
                 default:
                     return true;
             }
@@ -419,6 +421,7 @@ namespace code_a_la_mode
 
     internal struct GameState
     {
+        public Guid Guid { get; set; }
         public int TurnsLeft { get; set; }
         public int DishesOnTables { get; set; }
         public Player Player { get; set; }
@@ -902,6 +905,22 @@ namespace code_a_la_mode
         {
             List<GameAction> gameActions = new List<GameAction>();
 
+            //int i = 0;
+            //for (int j = 0; i < 90000000; i++)
+            //{
+            //    i++;
+            //    i++;
+            //    i++;
+            //    i++;
+            //    for (int k = 0; i < 4000; i++)
+            //    {
+            //        i++;
+            //        i++;
+            //        i++;
+            //        i++;
+            //    }
+            //}
+
             foreach (var item in kitchen.Equipments)
             {
                 if (Validator.CanUseWithEquipment(gameState.Player.Item, item))
@@ -930,6 +949,11 @@ namespace code_a_la_mode
             {
                 //TODO: Remove invalid actions
                 gameActions.Add(GameAction.UseAction(item.Key));
+            }
+
+            foreach (var action in gameActions)
+            {
+                Console.Error.WriteLineAsync($"{action} -> {actionEvaluator.Evaluate(kitchen, gameState, action)}");
             }
 
             return gameActions.OrderByDescending((action) => actionEvaluator.Evaluate(kitchen, gameState, action)).First();
@@ -1143,79 +1167,158 @@ namespace code_a_la_mode
         private const double playerItemCompletenessCoef = 0;//0.9;
         private const double travelDistanceCoef = 0.00;
         private const double ordersCountCoef = -10;
-        private const double completeRequirementsCoef = 0.6;
-        private const double requirementIngredientCoef = 0.4;
-        private const double playerCompleteRequirementsCoef = 0.8;
-        private const double playerRequirementIngredientCoef = 0.7;
+
+        private const double completeRequirementsCoef = 0.4;
+        private const double requirementIngredientCoef = 0.8;
+        private const double processedDessertCoef = 0;//0.5;
+        private const double correctDessertOrderCoef = 0.7;
+
+        private const double playerCompleteRequirementsCoef = 0.3;
+        private const double playerRequirementIngredientCoef = 0.35;
+        private const double playerProcessedDessertCoef = 0.6;
+        private const double playerCorrectDessertOrderCoef = 0.97;
+
+        private IDictionary<Guid, double> cache = new Dictionary<Guid, double>();
 
         public double Evaluate(IKitchen kitchen, GameState gameState)
         {
+            if (cache.ContainsKey(gameState.Guid))
+            {
+                return cache[gameState.Guid];
+            }
+
             double score = 0;
             double maxAward = gameState.WaitingOrders.First().AwardPoints;
+            IDictionary<string, bool> existingTableItem = new Dictionary<string, bool>();
 
-            foreach (var order in gameState.WaitingOrders)
+            double[] orderScores = new double[gameState.WaitingOrders.Length];
+            for (int i = 0; i < gameState.WaitingOrders.Length; i++)
             {
-                score -= order.AwardPoints / maxAward * orderAwardCoef;
-                var orderComposition = Chef.GetComposition(order.Item);
-                var orderRequirements = Chef.GetRequirements(order.Item);
+                var order = gameState.WaitingOrders[i];
+                orderScores[i] = EvaluateForOrder(kitchen, gameState, order, maxAward, existingTableItem);
+            }
+
+            score += orderScores.Max();
+            //score /= gameState.WaitingOrders.Length;
+
+            score += gameState.WaitingOrders.Length * ordersCountCoef;
+
+            cache[gameState.Guid] = score;
+            return score;
+        }
+
+        private static double EvaluateForOrder(IKitchen kitchen, GameState gameState, Order order, double maxAward, IDictionary<string, bool> existingTableItem)
+        {
+            double score = 0;
+            score -= order.AwardPoints / maxAward * orderAwardCoef;
+            var orderComposition = Chef.GetComposition(order.Item);
+            var orderRequirements = Chef.GetRequirements(order.Item);
 
 
-                foreach (var occupiedTable in gameState.OccupiedTables)
+            foreach (var occupiedTable in gameState.OccupiedTables)
+            {
+                var tableItem = occupiedTable.Value;
+                if (existingTableItem.ContainsKey(tableItem))
                 {
-                    var tableItem = occupiedTable.Value;
-                    var tableItemComposition = Chef.GetComposition(tableItem);
-                    double completenessScore = GetCompletenessScore(ref orderComposition, tableItem);
-                    score += completenessScore * otherCompletenessCoef;
+                    continue;
+                }
 
-                    //TODO: combine distance in turns to completeness score
-                    int distanceInTurns = kitchen.GetTravelDistance(gameState.Player.Position, occupiedTable.Key) / 4;
-                    score -= distanceInTurns * travelDistanceCoef;
+                var tableItemComposition = Chef.GetComposition(tableItem);
+                double completenessScore = GetCompletenessScore(ref orderComposition, tableItem);
+                score += completenessScore * otherCompletenessCoef;
 
-                    foreach (var requirement in orderRequirements)
+                //TODO: combine distance in turns to completeness score
+                int distanceInTurns = kitchen.GetTravelDistance(gameState.Player.Position, occupiedTable.Key) / 4;
+                score -= distanceInTurns * travelDistanceCoef;
+
+                for (int requirementIndex = 0; requirementIndex < orderRequirements.Length; requirementIndex++)
+                {
+                    var requirement = orderRequirements[requirementIndex];
+                    var tableDessert = new List<Dessert>(tableItemComposition.Desserts);
+                    var playerComposition = Chef.GetComposition(gameState.Player.Item);
+
+                    if (!playerComposition.IsInvalid && !playerComposition.HasDish)
                     {
-                        foreach (var dessert in tableItemComposition.Desserts)
-                        {
-                            if (dessert == requirement.Result)
-                            {
-                                score += 1 * completeRequirementsCoef;
-                            }
+                        tableDessert.AddRange(playerComposition.Desserts);
+                    }
 
-                            if (requirement.Desserts.Contains(dessert))
+                    for (int dessertIndex = 0; dessertIndex < tableItemComposition.Desserts.Length; dessertIndex++)
+                    {
+                        var dessert = tableItemComposition.Desserts[dessertIndex];
+                        bool isPlayerComposition = dessertIndex >= tableItemComposition.Desserts.Length;
+
+                        if (dessert == requirement.Result)
+                        {
+                            score += 1 * completeRequirementsCoef;
+                            score += requirement.NeedsDesserts ? 1 * processedDessertCoef : 0;
+
+                            if (dessertIndex != requirementIndex && tableItemComposition.HasDish && !isPlayerComposition)
                             {
-                                score += 1 * requirementIngredientCoef;
+                                score -= 1 * correctDessertOrderCoef;
                             }
                         }
 
+                        //Raw unit dessert on table is unacceptable
+                        if (!tableItemComposition.HasDish && !requirement.NeedsDesserts)
+                        {
+                            score -= 20;
+                            continue;
+                        }
+
+                        if (requirement.Desserts.Contains(dessert))
+                        {
+                            score += 1 * requirementIngredientCoef;
+
+                            if (dessertIndex == requirementIndex && tableItemComposition.HasDish)
+                            {
+                                score += 1 * correctDessertOrderCoef;
+                            }
+                        }
                     }
+
                 }
 
-                var playerItemComposition = Chef.GetComposition(gameState.Player.Item);
-                double playerItemScore = GetCompletenessScore(ref orderComposition, gameState.Player.Item);
-                score += playerItemScore * playerItemCompletenessCoef;
+                existingTableItem[tableItem] = true;
+            }
 
-                if (gameState.Player.Item != Constants.None)
+            var playerItemComposition = Chef.GetComposition(gameState.Player.Item);
+            double playerItemScore = GetCompletenessScore(ref orderComposition, gameState.Player.Item);
+            score += playerItemScore * playerItemCompletenessCoef;
+
+            if (gameState.Player.Item == Constants.None)
+            {
+                return score;
+            }
+
+            for (int requirementIndex = 0; requirementIndex < orderRequirements.Length; requirementIndex++)
+            {
+                var requirement = orderRequirements[requirementIndex];
+                for (int dessertIndex = 0; dessertIndex < playerItemComposition.Desserts.Length; dessertIndex++)
                 {
-                    foreach (var requirement in orderRequirements)
+                    var dessert = playerItemComposition.Desserts[dessertIndex];
+                    if (dessert == requirement.Result)
                     {
-                        foreach (var dessert in playerItemComposition.Desserts)
-                        {
-                            if (dessert == requirement.Result)
-                            {
-                                score += 1 * playerCompleteRequirementsCoef;
-                            }
+                        score += 1 * playerCompleteRequirementsCoef;
+                        score += requirement.NeedsDesserts ? 1 * playerProcessedDessertCoef : 0;
 
-                            if (requirement.Desserts.Contains(dessert))
-                            {
-                                score += 1 * playerRequirementIngredientCoef;
-                            }
+                        if (dessertIndex != requirementIndex)// && playerItemComposition.HasDish)
+                        {                          
+                            score -= 1 * playerCorrectDessertOrderCoef;
+                        }
+                    }
+
+                    if (requirement.Desserts.Contains(dessert))
+                    {
+                        score += 1 * playerRequirementIngredientCoef;
+
+                        if (dessertIndex == requirementIndex && playerItemComposition.HasDish)
+                        {
+                            score += 1 * correctDessertOrderCoef;
                         }
                     }
                 }
             }
 
-            score /= gameState.WaitingOrders.Length;
-
-            score += gameState.WaitingOrders.Length * ordersCountCoef;
             return score;
         }
 
@@ -1250,6 +1353,8 @@ namespace code_a_la_mode
         private const double travelDistanceCoef = 0.05;
         private const double noProgressCoef = 5;
 
+        private IDictionary<Guid, IDictionary<GameAction, double>> cache = new Dictionary<Guid, IDictionary<GameAction, double>>();
+
         public DefaultActionEvaluator(IGameEvaluator gameEvaluator, IGameSimulator gameSimulator)
         {
             this.gameEvaluator = gameEvaluator;
@@ -1258,6 +1363,11 @@ namespace code_a_la_mode
 
         public double Evaluate(IKitchen kitchen, GameState gameState, GameAction gameAction)
         {
+            if (cache.ContainsKey(gameState.Guid) && cache[gameState.Guid].ContainsKey(gameAction))
+            {
+                return cache[gameState.Guid][gameAction];
+            }
+
             double score = 0;
             double distanceInTurns = kitchen.GetTravelDistance(gameState.Player.Position, gameAction.Position) / 4.0;
             score -= distanceInTurns * travelDistanceCoef;
@@ -1265,6 +1375,13 @@ namespace code_a_la_mode
             score += gameEvaluator.Evaluate(kitchen, newState);
             bool isSameState = object.Equals(newState, gameState);
             score -= (isSameState ? 1 : 0) * noProgressCoef;
+
+            if (!cache.ContainsKey(gameState.Guid))
+            {
+                cache[gameState.Guid] = new Dictionary<GameAction, double>();
+            }
+
+            cache[gameState.Guid][gameAction] = score;
             return score;
         }
     }
@@ -1380,8 +1497,14 @@ namespace code_a_la_mode
                                     return currentState;
                                 }
 
+                                //Can't add same item
+                                if (player.Item.Contains(occupiedTables[action.Position]))
+                                {
+                                    return currentState;
+                                }
+
                                 //table doesn't have a dish so table item is placed in player's dish
-                                player.Item = Constants.Dish + "-" + occupiedTables[action.Position];
+                                player.Item += "-" + occupiedTables[action.Position];
                                 occupiedTables.Remove(action.Position);
                                 dishesOnTable -= 1;
                                 break;
@@ -1423,6 +1546,7 @@ namespace code_a_la_mode
 
             return new GameState
             {
+                Guid = Guid.NewGuid(),
                 TurnsLeft = currentState.TurnsLeft - 1,
                 DishesOnTables = dishesOnTable,
                 Player = player,
@@ -1434,7 +1558,7 @@ namespace code_a_la_mode
 
         private bool UseChoppingBoard(ref string carriedItem)
         {
-            if (carriedItem != Constants.DessertStrings[Dessert.Strawberries] || carriedItem != Constants.DessertStrings[Dessert.Dough])
+            if (carriedItem != Constants.DessertStrings[Dessert.Strawberries] && carriedItem != Constants.DessertStrings[Dessert.Dough])
             {
                 return false;
             }
@@ -1496,7 +1620,7 @@ namespace code_a_la_mode
 
         private bool UseDishwasher(ref string carriedItem, bool areDishesAvailable)
         {
-            if(carriedItem == Constants.DessertStrings[Dessert.Strawberries])
+            if (carriedItem == Constants.DessertStrings[Dessert.Strawberries])
             {
                 return false;
             }
@@ -1558,7 +1682,7 @@ namespace code_a_la_mode
             for (int i = 0; i < 7; i++)
             {
                 string kitchenLine = ReadInputLine();
-                Console.Error.WriteLine(kitchenLine);
+                Console.Error.WriteLineAsync(kitchenLine);
                 kitchen.AddLine(kitchenLine);
             }
 
@@ -1572,6 +1696,7 @@ namespace code_a_la_mode
 
                 GameState gameState = new GameState
                 {
+                    Guid = Guid.NewGuid(),
                     TurnsLeft = int.Parse(ReadInputLine())
                 };
 
@@ -1632,12 +1757,13 @@ namespace code_a_la_mode
                 });
 
                 watch.Stop();
-                Console.Error.WriteLine($"Initialization Time: {watch.ElapsedMilliseconds} ms");
+                Console.Error.WriteLineAsync($"Initialization Time: {watch.ElapsedMilliseconds} ms");
                 watch.Reset();
                 watch.Start();
-                Console.WriteLine(solver.Solve(kitchen, gameState));
+                GameAction solution = solver.Solve(kitchen, gameState);
                 watch.Stop();
-                Console.Error.WriteLine($"Execution Time: {watch.ElapsedMilliseconds} ms");
+                Console.Error.WriteLineAsync($"Execution Time: {watch.ElapsedMilliseconds} ms");
+                Console.WriteLine(solution);
             }
         }
 
