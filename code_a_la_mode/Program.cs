@@ -414,8 +414,8 @@ namespace code_a_la_mode
 
     internal struct GameState
     {
-        public Guid Guid { get; set; }
-        public int TurnsLeft { get; set; }
+//        public Guid Guid { get; set; }
+//        public int TurnsLeft { get; set; }
         public int DishesOnTables { get; set; }
         public Player Player { get; set; }
         public Player Partner { get; set; }
@@ -903,6 +903,7 @@ namespace code_a_la_mode
         private readonly IGameEvaluator _gameEvaluator;
         private readonly IActionEvaluator _actionEvaluator;
         private readonly IActionsGenerator _actionsGenerator;
+        private readonly IDictionary<GameState, double> _scoreCache = new Dictionary<GameState, double>();
 
         public BestFirstSearchSolver(IGameEvaluator gameEvaluator, IActionEvaluator actionEvaluator, IActionsGenerator actionsGenerator)
         {
@@ -913,6 +914,67 @@ namespace code_a_la_mode
 
         public GameAction Solve(IKitchen kitchen, GameState gameState)
         {
+            IEnumerable<GameAction> actions = _actionsGenerator.GenerateActions(kitchen, gameState);
+            List<Node> priorityQueue = new List<Node>();
+
+            Node bestNode = new Node
+            {
+                GameState = gameState
+            };
+
+            Node currentNode = bestNode;
+            IDictionary<GameState, bool> visited = new Dictionary<GameState, bool>();
+            priorityQueue.Add(bestNode);
+
+            while (priorityQueue.Any())
+            {
+                priorityQueue = priorityQueue.OrderBy(node => _gameEvaluator.Evaluate(kitchen, node.GameState)).ToList();
+                currentNode = priorityQueue.First();
+                priorityQueue.RemoveAt(0);
+                
+                visited[currentNode.GameState] = true;
+
+                if (!currentNode.GameState.WaitingOrders.Any())
+                {
+                    bestNode = currentNode;
+                    break;
+                }
+            }
+            
+            while (priorityQueue.Any())
+            {
+
+
+                if (destination.AdjacentPoints.Contains(currentNode.Point))
+                {
+                    currentNode.Completed = true;
+                    return currentNode;
+                }
+
+                foreach (var adjacentPoint in currentNode.Point.PerpendicularPoints)
+                {
+                    if (GetItem(adjacentPoint) != MapItem.WalkableCell && !Equals(adjacentPoint, destination))
+                    {
+                        continue;
+                    }
+
+                    if (visited.ContainsKey(adjacentPoint))
+                    {
+                        continue;
+                    }
+
+                    var newNode = new TripInfo
+                    {
+                        Point = adjacentPoint,
+                        EstimatedDistanceToDestination = adjacentPoint.DistanceTo(destination),
+                        DistanceFromOrigin = currentNode.DistanceFromOrigin + 1
+                    };
+
+                    priorityQueue.Add(newNode);
+                }
+            }
+
+            return currentNode;
             //int i = 0;
             //for (int j = 0; i < 90000000; i++)
             //{
@@ -931,6 +993,14 @@ namespace code_a_la_mode
 
             
             throw new NotImplementedException();
+        }
+        
+        private class Node
+        {
+            public Node Parent { get; set; }
+            public int Depth { get; set; }
+            public GameAction GameAction { get; set; }
+            public GameState GameState { get; set; }
         }
     }
 
@@ -954,7 +1024,7 @@ namespace code_a_la_mode
                 Console.Error.WriteLineAsync($"{action} -> {_actionEvaluator.Evaluate(kitchen, gameState, action)}");
             }
 
-            return actions.OrderByDescending((action) => _actionEvaluator.Evaluate(kitchen, gameState, action))
+            return actions.OrderByDescending(action => _actionEvaluator.Evaluate(kitchen, gameState, action))
                 .First();
         }
     }
@@ -1050,7 +1120,7 @@ namespace code_a_la_mode
                             continue;
                         }
 
-                        //Check if handcomposition can complete it
+                        //Check if hand composition can complete it
                         var handDiff = diff.GetDiff(handComposition);
                         if (handDiff.IsInvalid)
                         {
@@ -1183,13 +1253,13 @@ namespace code_a_la_mode
         private const double PlayerProcessedDessertCoef = 0.6;
         private const double PlayerCorrectDessertOrderCoef = 0.97;
 
-        private readonly IDictionary<Guid, double> _cache = new Dictionary<Guid, double>();
+        private readonly IDictionary<GameState, double> _cache = new Dictionary<GameState, double>();
 
         public double Evaluate(IKitchen kitchen, GameState gameState)
         {
-            if (_cache.ContainsKey(gameState.Guid))
+            if (_cache.ContainsKey(gameState))
             {
-                return _cache[gameState.Guid];
+                return _cache[gameState];
             }
 
             double score = 0;
@@ -1208,7 +1278,7 @@ namespace code_a_la_mode
 
             score += gameState.WaitingOrders.Length * OrdersCountCoef;
 
-            _cache[gameState.Guid] = score;
+            _cache[gameState] = score;
             return score;
         }
 
@@ -1359,8 +1429,8 @@ namespace code_a_la_mode
         private const double TravelDistanceCoef = 0.05;
         private const double NoProgressCoef = 5;
 
-        private readonly IDictionary<Guid, IDictionary<GameAction, double>> _cache =
-            new Dictionary<Guid, IDictionary<GameAction, double>>();
+        private readonly IDictionary<GameState, IDictionary<GameAction, double>> _cache =
+            new Dictionary<GameState, IDictionary<GameAction, double>>();
 
         public DefaultActionEvaluator(IGameEvaluator gameEvaluator, IGameSimulator gameSimulator)
         {
@@ -1370,9 +1440,9 @@ namespace code_a_la_mode
 
         public double Evaluate(IKitchen kitchen, GameState gameState, GameAction gameAction)
         {
-            if (_cache.ContainsKey(gameState.Guid) && _cache[gameState.Guid].ContainsKey(gameAction))
+            if (_cache.ContainsKey(gameState) && _cache[gameState].ContainsKey(gameAction))
             {
-                return _cache[gameState.Guid][gameAction];
+                return _cache[gameState][gameAction];
             }
 
             double score = 0;
@@ -1383,12 +1453,12 @@ namespace code_a_la_mode
             bool isSameState = Equals(newState, gameState);
             score -= (isSameState ? 1 : 0) * NoProgressCoef;
 
-            if (!_cache.ContainsKey(gameState.Guid))
+            if (!_cache.ContainsKey(gameState))
             {
-                _cache[gameState.Guid] = new Dictionary<GameAction, double>();
+                _cache[gameState] = new Dictionary<GameAction, double>();
             }
 
-            _cache[gameState.Guid][gameAction] = score;
+            _cache[gameState][gameAction] = score;
             return score;
         }
     }
@@ -1553,8 +1623,8 @@ namespace code_a_la_mode
 
             return new GameState
             {
-                Guid = Guid.NewGuid(),
-                TurnsLeft = currentState.TurnsLeft - 1,
+//                Guid = Guid.NewGuid(),
+//                TurnsLeft = currentState.TurnsLeft - 1,
                 DishesOnTables = dishesOnTable,
                 Player = player,
                 Partner = currentState.Partner,
@@ -1664,7 +1734,7 @@ namespace code_a_la_mode
             GameState b = new GameState();
             GameState c = new GameState
             {
-                TurnsLeft = 300,
+//                TurnsLeft = 300,
                 Partner = new Player(0, 1, Constants.None),
                 Player = new Player(2, 5, Constants.Dish)
             };
@@ -1720,12 +1790,8 @@ namespace code_a_la_mode
                 watch.Reset();
                 watch.Start();
 
-                GameState gameState = new GameState
-                {
-                    Guid = Guid.NewGuid(),
-                    TurnsLeft = int.Parse(ReadInputLine())
-                };
-
+                int turnsLeft = int.Parse(ReadInputLine());
+                GameState gameState = new GameState();
                 kitchen.ClearTemporaryItems();
 
                 inputs = ReadInputLine().Split(' ');
