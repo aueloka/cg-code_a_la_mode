@@ -57,9 +57,9 @@ namespace code_a_la_mode
     #region Statics
     internal static class Constants
     {
-        public static string Dish = "DISH";
+        public const string Dish = "DISH";
 
-        public static string None = "NONE";
+        public const string None = "NONE";
 
         public static readonly IDictionary<Dessert, string> DessertStrings = new Dictionary<Dessert, string>
         {
@@ -89,32 +89,6 @@ namespace code_a_la_mode
             {"STRAWBERRIES", Dessert.Strawberries},
             {"STRAWBERRY", Dessert.Strawberry},
             {"TART", Dessert.Tart}
-        };
-
-        public static readonly ICollection<Equipment> KitchenEquipments = new Equipment[]
-        {
-            Equipment.BlueberryCrate,
-            Equipment.ChoppingBoard,
-            Equipment.Dishwasher,
-            Equipment.IceCreamCrate,
-            Equipment.Oven,
-            Equipment.StrawberryCrate,
-            Equipment.Window
-        };
-
-        public static readonly ICollection<Dessert> Desserts = new Dessert[]
-        {
-            Dessert.Blueberries,
-            Dessert.Blueberry,
-            Dessert.ChoppedDough,
-            Dessert.ChoppedStrawberries,
-            Dessert.Croissant,
-            Dessert.Dough,
-            Dessert.IceCream,
-            Dessert.RawTart,
-            Dessert.Strawberries,
-            Dessert.Strawberry,
-            Dessert.Tart
         };
 
         public static readonly IDictionary<Action, string> ActionStrings = new Dictionary<Action, string>
@@ -168,8 +142,8 @@ namespace code_a_la_mode
             {Dessert.Croissant, Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.Oven, Dessert.Croissant)},
         };
 
-        private static IDictionary<string, Composition> ItemComposition = new Dictionary<string, Composition>();
-        private static IDictionary<string, Requirements[]> ItemRequirements = new Dictionary<string, Requirements[]>();
+        private static readonly IDictionary<string, Composition> ItemComposition = new Dictionary<string, Composition>();
+        private static readonly IDictionary<string, Requirements[]> ItemRequirements = new Dictionary<string, Requirements[]>();
 
 
         public static Composition GetComposition(string item)
@@ -263,7 +237,7 @@ namespace code_a_la_mode
 
     internal static class WatchDog
     {
-        public static System.Diagnostics.Stopwatch Stopwatch = new System.Diagnostics.Stopwatch();
+        public static readonly System.Diagnostics.Stopwatch Stopwatch = new System.Diagnostics.Stopwatch();
     }
     #endregion
 
@@ -460,43 +434,31 @@ namespace code_a_la_mode
 
     internal struct Point
     {
-        public int X { get; set; }
+        public int X { get; }
 
-        public int Y { get; set; }
+        public int Y { get; }
 
         public bool IsValid => X >= 0 && X < 11 && Y >= 0 && Y < 11;
 
-        public Point[] AdjacentPoints
+        public IEnumerable<Point> AdjacentPoints => new[]
         {
-            get
-            {
-                return new Point[]
-                {
-                    new Point(X - 1, Y),
-                    new Point(X - 1, Y - 1),
-                    new Point(X, Y - 1),
-                    new Point(X + 1, Y - 1),
-                    new Point(X + 1, Y),
-                    new Point(X + 1, Y + 1),
-                    new Point(X, Y + 1),
-                    new Point(X - 1, Y + 1)
-                };
-            }
-        }
+            new Point(X - 1, Y),
+            new Point(X - 1, Y - 1),
+            new Point(X, Y - 1),
+            new Point(X + 1, Y - 1),
+            new Point(X + 1, Y),
+            new Point(X + 1, Y + 1),
+            new Point(X, Y + 1),
+            new Point(X - 1, Y + 1)
+        };
 
-        public Point[] PerpendicularPoints
+        public IEnumerable<Point> PerpendicularPoints => new[]
         {
-            get
-            {
-                return new Point[]
-                {
-                    new Point(X - 1, Y),
-                    new Point(X, Y - 1),
-                    new Point(X + 1, Y),
-                    new Point(X, Y + 1),
-                };
-            }
-        }
+            new Point(X - 1, Y),
+            new Point(X, Y - 1),
+            new Point(X + 1, Y),
+            new Point(X, Y + 1),
+        };
 
         public Point(int x = 0, int y = 0)
         {
@@ -507,11 +469,6 @@ namespace code_a_la_mode
         public int DistanceTo(Point other)
         {
             return Math.Max(Math.Abs(X - other.X), Math.Abs(Y - other.Y));
-        }
-
-        public bool IsAdjacentTo(Point other)
-        {
-            return this.DistanceTo(other) < 2;
         }
 
         public override string ToString()
@@ -536,13 +493,7 @@ namespace code_a_la_mode
             }
         }
 
-        public bool NeedsDesserts
-        {
-            get
-            {
-                return Desserts != null;
-            }
-        }
+        public bool NeedsDesserts => Desserts != null;
 
         public bool NeedsEquipment { get; }
 
@@ -610,13 +561,7 @@ namespace code_a_la_mode
         public int EstimatedDistanceToDestination { get; set; }
         public int DistanceFromOrigin { get; set; }
         public bool Completed { get; set; }
-        public int TotalDistance
-        {
-            get
-            {
-                return EstimatedDistanceToDestination + DistanceFromOrigin;
-            }
-        }
+        public int TotalDistance => EstimatedDistanceToDestination + DistanceFromOrigin;
 
         public static bool operator <(TripInfo lhs, TripInfo rhs)
         {
@@ -662,7 +607,7 @@ namespace code_a_la_mode
     {
         private int _addedLines;
         private readonly string[] _kitchen = new string[11];
-        private IDictionary<Point, string> _temporaryItems = new Dictionary<Point, string>();
+        private readonly IDictionary<Point, string> _temporaryItems = new Dictionary<Point, string>();
 
         public Dictionary<Equipment, Point> EquipmentPosition { get; } = new Dictionary<Equipment, Point>();
 
@@ -822,7 +767,7 @@ namespace code_a_la_mode
 
             while (priorityQueue.Any())
             {
-                priorityQueue = priorityQueue.OrderBy((TripInfo node) => node.TotalDistance).ToList();
+                priorityQueue = priorityQueue.OrderBy(node => node.TotalDistance).ToList();
                 currentNode = priorityQueue.First();
                 priorityQueue.RemoveAt(0);
 
@@ -836,7 +781,7 @@ namespace code_a_la_mode
 
                 foreach (var adjacentPoint in currentNode.Point.PerpendicularPoints)
                 {
-                    if (GetItem(adjacentPoint) != MapItem.WalkableCell && !object.Equals(adjacentPoint, destination))
+                    if (GetItem(adjacentPoint) != MapItem.WalkableCell && !Equals(adjacentPoint, destination))
                     {
                         continue;
                     }
@@ -875,11 +820,11 @@ namespace code_a_la_mode
     #region Solvers
     internal static class Randomizer
     {
-        private static readonly Random random = new Random(DateTime.Now.Millisecond);
+        private static readonly Random Random = new Random(DateTime.Now.Millisecond);
 
         public static Random Get()
         {
-            return random;
+            return Random;
         }
     }
 
@@ -890,15 +835,11 @@ namespace code_a_la_mode
 
     internal class BruteForceSolver : ISolver
     {
-        private readonly IGameSimulator gameSimulator;
-        private readonly IGameEvaluator gameEvaluator;
-        private readonly IActionEvaluator actionEvaluator;
+        private readonly IActionEvaluator _actionEvaluator;
 
-        public BruteForceSolver(IGameSimulator gameSimulator, IGameEvaluator gameEvaluator, IActionEvaluator actionEvaluator)
+        public BruteForceSolver(IActionEvaluator actionEvaluator)
         {
-            this.gameSimulator = gameSimulator;
-            this.gameEvaluator = gameEvaluator;
-            this.actionEvaluator = actionEvaluator;
+            this._actionEvaluator = actionEvaluator;
         }
 
         public GameAction Solve(IKitchen kitchen, GameState gameState)
@@ -953,10 +894,10 @@ namespace code_a_la_mode
 
             foreach (var action in gameActions)
             {
-                Console.Error.WriteLineAsync($"{action} -> {actionEvaluator.Evaluate(kitchen, gameState, action)}");
+                Console.Error.WriteLineAsync($"{action} -> {_actionEvaluator.Evaluate(kitchen, gameState, action)}");
             }
 
-            return gameActions.OrderByDescending((action) => actionEvaluator.Evaluate(kitchen, gameState, action)).First();
+            return gameActions.OrderByDescending((action) => _actionEvaluator.Evaluate(kitchen, gameState, action)).First();
         }
     }
 
@@ -1018,11 +959,11 @@ namespace code_a_la_mode
                 }
 
                 //Get top order
-                var top = gameState.WaitingOrders.First();
-                var composition = Chef.GetComposition(top.Item);
+//                var top = gameState.WaitingOrders.First();
+//                var composition = Chef.GetComposition(top.Item);
 
                 //Get a dish
-                //TODO: Check for closest pickable composition item
+                //TODO: Check for closest pick-able composition item
                 return GameAction.UseAction(kitchen.EquipmentPosition[Equipment.Dishwasher], "Going to get dish.");
             }
 
@@ -1144,7 +1085,7 @@ namespace code_a_la_mode
                 Message = "Random :)"
             };
 
-            return GameAction.UseAction(new Point(0, 6), "Check Use");
+            return gameAction;
         }
     }
 
@@ -1162,29 +1103,29 @@ namespace code_a_la_mode
 
     internal class DefaultGameEvaluator : IGameEvaluator
     {
-        private const double orderAwardCoef = 0.5;
-        private const double otherCompletenessCoef = 0;//0.2;
-        private const double playerItemCompletenessCoef = 0;//0.9;
-        private const double travelDistanceCoef = 0.00;
-        private const double ordersCountCoef = -10;
+        private const double OrderAwardCoef = 0.5;
+        private const double OtherCompletenessCoef = 0;//0.2;
+        private const double PlayerItemCompletenessCoef = 0;//0.9;
+        private const double TravelDistanceCoef = 0.00;
+        private const double OrdersCountCoef = -10;
 
-        private const double completeRequirementsCoef = 0.4;
-        private const double requirementIngredientCoef = 0.8;
-        private const double processedDessertCoef = 0;//0.5;
-        private const double correctDessertOrderCoef = 0.7;
+        private const double CompleteRequirementsCoef = 0.4;
+        private const double RequirementIngredientCoef = 0.8;
+        private const double ProcessedDessertCoef = 0;//0.5;
+        private const double CorrectDessertOrderCoef = 0.7;
 
-        private const double playerCompleteRequirementsCoef = 0.3;
-        private const double playerRequirementIngredientCoef = 0.35;
-        private const double playerProcessedDessertCoef = 0.6;
-        private const double playerCorrectDessertOrderCoef = 0.97;
+        private const double PlayerCompleteRequirementsCoef = 0.3;
+        private const double PlayerRequirementIngredientCoef = 0.35;
+        private const double PlayerProcessedDessertCoef = 0.6;
+        private const double PlayerCorrectDessertOrderCoef = 0.97;
 
-        private IDictionary<Guid, double> cache = new Dictionary<Guid, double>();
+        private readonly IDictionary<Guid, double> _cache = new Dictionary<Guid, double>();
 
         public double Evaluate(IKitchen kitchen, GameState gameState)
         {
-            if (cache.ContainsKey(gameState.Guid))
+            if (_cache.ContainsKey(gameState.Guid))
             {
-                return cache[gameState.Guid];
+                return _cache[gameState.Guid];
             }
 
             double score = 0;
@@ -1201,16 +1142,16 @@ namespace code_a_la_mode
             score += orderScores.Max();
             //score /= gameState.WaitingOrders.Length;
 
-            score += gameState.WaitingOrders.Length * ordersCountCoef;
+            score += gameState.WaitingOrders.Length * OrdersCountCoef;
 
-            cache[gameState.Guid] = score;
+            _cache[gameState.Guid] = score;
             return score;
         }
 
         private static double EvaluateForOrder(IKitchen kitchen, GameState gameState, Order order, double maxAward, IDictionary<string, bool> existingTableItem)
         {
             double score = 0;
-            score -= order.AwardPoints / maxAward * orderAwardCoef;
+            score -= order.AwardPoints / maxAward * OrderAwardCoef;
             var orderComposition = Chef.GetComposition(order.Item);
             var orderRequirements = Chef.GetRequirements(order.Item);
 
@@ -1225,11 +1166,11 @@ namespace code_a_la_mode
 
                 var tableItemComposition = Chef.GetComposition(tableItem);
                 double completenessScore = GetCompletenessScore(ref orderComposition, tableItem);
-                score += completenessScore * otherCompletenessCoef;
+                score += completenessScore * OtherCompletenessCoef;
 
                 //TODO: combine distance in turns to completeness score
                 int distanceInTurns = kitchen.GetTravelDistance(gameState.Player.Position, occupiedTable.Key) / 4;
-                score -= distanceInTurns * travelDistanceCoef;
+                score -= distanceInTurns * TravelDistanceCoef;
 
                 for (int requirementIndex = 0; requirementIndex < orderRequirements.Length; requirementIndex++)
                 {
@@ -1242,19 +1183,19 @@ namespace code_a_la_mode
                         tableDessert.AddRange(playerComposition.Desserts);
                     }
 
-                    for (int dessertIndex = 0; dessertIndex < tableItemComposition.Desserts.Length; dessertIndex++)
+                    for (int dessertIndex = 0; dessertIndex < tableDessert.Count; dessertIndex++)
                     {
-                        var dessert = tableItemComposition.Desserts[dessertIndex];
+                        var dessert = tableDessert[dessertIndex];
                         bool isPlayerComposition = dessertIndex >= tableItemComposition.Desserts.Length;
 
                         if (dessert == requirement.Result)
                         {
-                            score += 1 * completeRequirementsCoef;
-                            score += requirement.NeedsDesserts ? 1 * processedDessertCoef : 0;
+                            score += 1 * CompleteRequirementsCoef;
+                            score += requirement.NeedsDesserts ? 1 * ProcessedDessertCoef : 0;
 
                             if (dessertIndex != requirementIndex && tableItemComposition.HasDish && !isPlayerComposition)
                             {
-                                score -= 1 * correctDessertOrderCoef;
+                                score -= 1 * CorrectDessertOrderCoef;
                             }
                         }
 
@@ -1267,11 +1208,11 @@ namespace code_a_la_mode
 
                         if (requirement.Desserts.Contains(dessert))
                         {
-                            score += 1 * requirementIngredientCoef;
+                            score += 1 * RequirementIngredientCoef;
 
                             if (dessertIndex == requirementIndex && tableItemComposition.HasDish)
                             {
-                                score += 1 * correctDessertOrderCoef;
+                                score += 1 * CorrectDessertOrderCoef;
                             }
                         }
                     }
@@ -1283,7 +1224,7 @@ namespace code_a_la_mode
 
             var playerItemComposition = Chef.GetComposition(gameState.Player.Item);
             double playerItemScore = GetCompletenessScore(ref orderComposition, gameState.Player.Item);
-            score += playerItemScore * playerItemCompletenessCoef;
+            score += playerItemScore * PlayerItemCompletenessCoef;
 
             if (gameState.Player.Item == Constants.None)
             {
@@ -1298,22 +1239,22 @@ namespace code_a_la_mode
                     var dessert = playerItemComposition.Desserts[dessertIndex];
                     if (dessert == requirement.Result)
                     {
-                        score += 1 * playerCompleteRequirementsCoef;
-                        score += requirement.NeedsDesserts ? 1 * playerProcessedDessertCoef : 0;
+                        score += 1 * PlayerCompleteRequirementsCoef;
+                        score += requirement.NeedsDesserts ? 1 * PlayerProcessedDessertCoef : 0;
 
                         if (dessertIndex != requirementIndex)// && playerItemComposition.HasDish)
                         {                          
-                            score -= 1 * playerCorrectDessertOrderCoef;
+                            score -= 1 * PlayerCorrectDessertOrderCoef;
                         }
                     }
 
                     if (requirement.Desserts.Contains(dessert))
                     {
-                        score += 1 * playerRequirementIngredientCoef;
+                        score += 1 * PlayerRequirementIngredientCoef;
 
                         if (dessertIndex == requirementIndex && playerItemComposition.HasDish)
                         {
-                            score += 1 * correctDessertOrderCoef;
+                            score += 1 * CorrectDessertOrderCoef;
                         }
                     }
                 }
@@ -1348,40 +1289,40 @@ namespace code_a_la_mode
 
     internal class DefaultActionEvaluator : IActionEvaluator
     {
-        private readonly IGameEvaluator gameEvaluator;
-        private readonly IGameSimulator gameSimulator;
-        private const double travelDistanceCoef = 0.05;
-        private const double noProgressCoef = 5;
+        private readonly IGameEvaluator _gameEvaluator;
+        private readonly IGameSimulator _gameSimulator;
+        private const double TravelDistanceCoef = 0.05;
+        private const double NoProgressCoef = 5;
 
-        private IDictionary<Guid, IDictionary<GameAction, double>> cache = new Dictionary<Guid, IDictionary<GameAction, double>>();
+        private readonly IDictionary<Guid, IDictionary<GameAction, double>> _cache = new Dictionary<Guid, IDictionary<GameAction, double>>();
 
         public DefaultActionEvaluator(IGameEvaluator gameEvaluator, IGameSimulator gameSimulator)
         {
-            this.gameEvaluator = gameEvaluator;
-            this.gameSimulator = gameSimulator;
+            this._gameEvaluator = gameEvaluator;
+            this._gameSimulator = gameSimulator;
         }
 
         public double Evaluate(IKitchen kitchen, GameState gameState, GameAction gameAction)
         {
-            if (cache.ContainsKey(gameState.Guid) && cache[gameState.Guid].ContainsKey(gameAction))
+            if (_cache.ContainsKey(gameState.Guid) && _cache[gameState.Guid].ContainsKey(gameAction))
             {
-                return cache[gameState.Guid][gameAction];
+                return _cache[gameState.Guid][gameAction];
             }
 
             double score = 0;
             double distanceInTurns = kitchen.GetTravelDistance(gameState.Player.Position, gameAction.Position) / 4.0;
-            score -= distanceInTurns * travelDistanceCoef;
-            var newState = gameSimulator.Simulate(kitchen, gameState, gameAction);
-            score += gameEvaluator.Evaluate(kitchen, newState);
-            bool isSameState = object.Equals(newState, gameState);
-            score -= (isSameState ? 1 : 0) * noProgressCoef;
+            score -= distanceInTurns * TravelDistanceCoef;
+            var newState = _gameSimulator.Simulate(kitchen, gameState, gameAction);
+            score += _gameEvaluator.Evaluate(kitchen, newState);
+            bool isSameState = Equals(newState, gameState);
+            score -= (isSameState ? 1 : 0) * NoProgressCoef;
 
-            if (!cache.ContainsKey(gameState.Guid))
+            if (!_cache.ContainsKey(gameState.Guid))
             {
-                cache[gameState.Guid] = new Dictionary<GameAction, double>();
+                _cache[gameState.Guid] = new Dictionary<GameAction, double>();
             }
 
-            cache[gameState.Guid][gameAction] = score;
+            _cache[gameState.Guid][gameAction] = score;
             return score;
         }
     }
@@ -1556,7 +1497,7 @@ namespace code_a_la_mode
             };
         }
 
-        private bool UseChoppingBoard(ref string carriedItem)
+        private static bool UseChoppingBoard(ref string carriedItem)
         {
             if (carriedItem != Constants.DessertStrings[Dessert.Strawberries] && carriedItem != Constants.DessertStrings[Dessert.Dough])
             {
@@ -1567,25 +1508,27 @@ namespace code_a_la_mode
             return true;
         }
 
-        private bool UseBlueberryCrate(ref string carriedItem)
+        private static bool UseBlueberryCrate(ref string carriedItem)
         {
             bool result = UseDessertCrate(ref carriedItem, Dessert.Blueberries);
 
             if (result)
             {
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 return result;
             }
 
-            if (carriedItem == Constants.DessertStrings[Dessert.ChoppedDough])
+            if (carriedItem != Constants.DessertStrings[Dessert.ChoppedDough])
             {
-                carriedItem = Constants.DessertStrings[Dessert.RawTart];
-                return true;
+                return false;
             }
+            
+            carriedItem = Constants.DessertStrings[Dessert.RawTart];
+            return true;
 
-            return false;
         }
 
-        private bool UseStrawberryCrate(ref string carriedItem)
+        private static bool UseStrawberryCrate(ref string carriedItem)
         {
             if (carriedItem != Constants.None)
             {
@@ -1596,7 +1539,7 @@ namespace code_a_la_mode
             return true;
         }
 
-        private bool UseDessertCrate(ref string carriedItem, Dessert dessert)
+        private static bool UseDessertCrate(ref string carriedItem, Dessert dessert)
         {
             if (carriedItem == Constants.None)
             {
@@ -1604,21 +1547,22 @@ namespace code_a_la_mode
                 return true;
             }
 
-            if (carriedItem.StartsWith(Constants.Dish, StringComparison.InvariantCulture))
+            if (!carriedItem.StartsWith(Constants.Dish, StringComparison.InvariantCulture))
             {
-                if (carriedItem.Contains(Constants.DessertStrings[dessert]))
-                {
-                    return false;
-                }
-
-                carriedItem += "-" + Constants.DessertStrings[dessert];
-                return true;
+                return false;
+            }
+            
+            if (carriedItem.Contains(Constants.DessertStrings[dessert]))
+            {
+                return false;
             }
 
-            return false;
+            carriedItem += "-" + Constants.DessertStrings[dessert];
+            return true;
+
         }
 
-        private bool UseDishwasher(ref string carriedItem, bool areDishesAvailable)
+        private static bool UseDishwasher(ref string carriedItem, bool areDishesAvailable)
         {
             if (carriedItem == Constants.DessertStrings[Dessert.Strawberries])
             {
@@ -1663,7 +1607,7 @@ namespace code_a_la_mode
             IGameSimulator simulator = new DefaultGameSimulator();
             IGameEvaluator gameEvaluator = new DefaultGameEvaluator();
             IActionEvaluator actionEvaluator = new DefaultActionEvaluator(gameEvaluator, simulator);
-            ISolver solver = new BruteForceSolver(simulator, gameEvaluator, actionEvaluator);//new ManualSolver();
+            ISolver solver = new BruteForceSolver(actionEvaluator);//new ManualSolver();
 
             string[] inputs;
             int numAllCustomers = int.Parse(ReadInputLine());
