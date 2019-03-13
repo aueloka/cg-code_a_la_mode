@@ -6,6 +6,7 @@ using System.Text;
 namespace code_a_la_mode
 {
     #region Enums
+
     internal enum Action
     {
         Move,
@@ -52,9 +53,11 @@ namespace code_a_la_mode
         StrawberryCrate,
         ChoppingBoard
     }
+
     #endregion
 
     #region Statics
+
     internal static class Constants
     {
         public const string Dish = "DISH";
@@ -127,23 +130,40 @@ namespace code_a_la_mode
     {
         public static readonly IDictionary<Dessert, Requirements> CookBook = new Dictionary<Dessert, Requirements>
         {
-            {Dessert.Blueberries, Requirements.SingleEquipmentRequirement(Equipment.BlueberryCrate, Dessert.Blueberries)},
+            {
+                Dessert.Blueberries,
+                Requirements.SingleEquipmentRequirement(Equipment.BlueberryCrate, Dessert.Blueberries)
+            },
             {Dessert.IceCream, Requirements.SingleEquipmentRequirement(Equipment.IceCreamCrate, Dessert.IceCream)},
-            {Dessert.RawTart, Requirements.DoubleDessertRequirement(Dessert.ChoppedDough, Dessert.Blueberry, Dessert.RawTart)},
+            {
+                Dessert.RawTart,
+                Requirements.DoubleDessertRequirement(Dessert.ChoppedDough, Dessert.Blueberry, Dessert.RawTart)
+            },
             {
                 Dessert.ChoppedStrawberries,
-                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Strawberries, Equipment.ChoppingBoard, Dessert.ChoppedStrawberries)
+                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Strawberries, Equipment.ChoppingBoard,
+                    Dessert.ChoppedStrawberries)
             },
             {
                 Dessert.ChoppedDough,
-                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.ChoppingBoard, Dessert.ChoppedDough)
+                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.ChoppingBoard,
+                    Dessert.ChoppedDough)
             },
-            {Dessert.Tart, Requirements.SingleDessertAndEquipmentRequirement(Dessert.RawTart, Equipment.Oven, Dessert.Tart)},
-            {Dessert.Croissant, Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.Oven, Dessert.Croissant)},
+            {
+                Dessert.Tart,
+                Requirements.SingleDessertAndEquipmentRequirement(Dessert.RawTart, Equipment.Oven, Dessert.Tart)
+            },
+            {
+                Dessert.Croissant,
+                Requirements.SingleDessertAndEquipmentRequirement(Dessert.Dough, Equipment.Oven, Dessert.Croissant)
+            },
         };
 
-        private static readonly IDictionary<string, Composition> ItemComposition = new Dictionary<string, Composition>();
-        private static readonly IDictionary<string, Requirements[]> ItemRequirements = new Dictionary<string, Requirements[]>();
+        private static readonly IDictionary<string, Composition>
+            ItemComposition = new Dictionary<string, Composition>();
+
+        private static readonly IDictionary<string, Requirements[]> ItemRequirements =
+            new Dictionary<string, Requirements[]>();
 
 
         public static Composition GetComposition(string item)
@@ -158,7 +178,7 @@ namespace code_a_la_mode
                 return ItemComposition[item];
             }
 
-            string[] items = item.Split(new[] { '-' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] items = item.Split(new[] {'-'}, StringSplitOptions.RemoveEmptyEntries);
 
 
             Composition composition = new Composition(item);
@@ -217,16 +237,16 @@ namespace code_a_la_mode
             switch (equipment)
             {
                 case Equipment.BlueberryCrate:
-                    {
-                        return item.Contains(Constants.Dish) ||
-                        item.Contains(Constants.None) ||
-                        item == Constants.DessertStrings[Dessert.ChoppedDough];
-                    }
+                {
+                    return item.Contains(Constants.Dish) ||
+                           item.Contains(Constants.None) ||
+                           item == Constants.DessertStrings[Dessert.ChoppedDough];
+                }
                 case Equipment.ChoppingBoard:
-                    {
-                        return item == Constants.DessertStrings[Dessert.Strawberries] ||
-                            item == Constants.DessertStrings[Dessert.Dough];
-                    }
+                {
+                    return item == Constants.DessertStrings[Dessert.Strawberries] ||
+                           item == Constants.DessertStrings[Dessert.Dough];
+                }
                 case Equipment.StrawberryCrate:
                     return item == Constants.None;
                 default:
@@ -239,9 +259,11 @@ namespace code_a_la_mode
     {
         public static readonly System.Diagnostics.Stopwatch Stopwatch = new System.Diagnostics.Stopwatch();
     }
+
     #endregion
 
     #region Structs
+
     internal struct Composition
     {
         public string Name { get; }
@@ -252,15 +274,12 @@ namespace code_a_la_mode
 
         public Dessert FirstDessertByMinDifficulty
         {
-            get
-            {
-                return Desserts.OrderBy(dessert => Chef.CookBook[dessert].Difficulty).First();
-            }
+            get { return Desserts.OrderBy(dessert => Chef.CookBook[dessert].Difficulty).First(); }
         }
 
         public bool IsInvalid { get; private set; }
 
-        public static Composition Invalid = new Composition { IsInvalid = true };
+        public static Composition Invalid = new Composition {IsInvalid = true};
 
         public Composition(string name) : this()
         {
@@ -279,19 +298,19 @@ namespace code_a_la_mode
             return DiffImpl2(other);
         }
 
-        private Composition DiffImpl1(Composition other)
-        {
-            if (other.IsInvalid || other.Desserts.Except(this.Desserts).Any())
-            {
-                return Composition.Invalid;
-            }
-
-            return new Composition("")
-            {
-                HasDish = this.HasDish && !other.HasDish,
-                Desserts = this.Desserts.Except(other.Desserts).ToArray()
-            };
-        }
+//        private Composition DiffImpl1(Composition other)
+//        {
+//            if (other.IsInvalid || other.Desserts.Except(this.Desserts).Any())
+//            {
+//                return Composition.Invalid;
+//            }
+//
+//            return new Composition("")
+//            {
+//                HasDish = this.HasDish && !other.HasDish,
+//                Desserts = this.Desserts.Except(other.Desserts).ToArray()
+//            };
+//        }
 
         private Composition DiffImpl2(Composition other)
         {
@@ -487,10 +506,7 @@ namespace code_a_la_mode
 
         public Dessert FirstDessertByMinDifficulty
         {
-            get
-            {
-                return Desserts.OrderBy(element => Chef.CookBook[element].Difficulty).First();
-            }
+            get { return Desserts.OrderBy(element => Chef.CookBook[element].Difficulty).First(); }
         }
 
         public bool NeedsDesserts => Desserts != null;
@@ -538,21 +554,23 @@ namespace code_a_la_mode
         {
             return new Requirements
             {
-                Desserts = new[] { a, b },
+                Desserts = new[] {a, b},
                 Result = result
             };
         }
 
-        public static Requirements SingleDessertAndEquipmentRequirement(Dessert dessert, Equipment equipment, Dessert result)
+        public static Requirements SingleDessertAndEquipmentRequirement(Dessert dessert, Equipment equipment,
+            Dessert result)
         {
             return new Requirements
             {
-                Desserts = new[] { dessert },
+                Desserts = new[] {dessert},
                 Equipment = equipment,
                 Result = result
             };
         }
     }
+
     #endregion
 
     internal struct TripInfo
@@ -818,6 +836,7 @@ namespace code_a_la_mode
     }
 
     #region Solvers
+
     internal static class Randomizer
     {
         private static readonly Random Random = new Random(DateTime.Now.Millisecond);
@@ -828,49 +847,27 @@ namespace code_a_la_mode
         }
     }
 
-    internal interface ISolver
+    internal interface IActionsGenerator
     {
-        GameAction Solve(IKitchen kitchen, GameState gameState);
+        IEnumerable<GameAction> GenerateActions(IKitchen kitchen, GameState gameState, bool forPlayer = true);
     }
 
-    internal class BruteForceSolver : ISolver
+    internal class DefaultActionsGenerator : IActionsGenerator
     {
-        private readonly IActionEvaluator _actionEvaluator;
-
-        public BruteForceSolver(IActionEvaluator actionEvaluator)
+        public IEnumerable<GameAction> GenerateActions(IKitchen kitchen, GameState gameState, bool forPlayer = true)
         {
-            this._actionEvaluator = actionEvaluator;
-        }
-
-        public GameAction Solve(IKitchen kitchen, GameState gameState)
-        {
-            List<GameAction> gameActions = new List<GameAction>();
-
-            //int i = 0;
-            //for (int j = 0; i < 90000000; i++)
-            //{
-            //    i++;
-            //    i++;
-            //    i++;
-            //    i++;
-            //    for (int k = 0; i < 4000; i++)
-            //    {
-            //        i++;
-            //        i++;
-            //        i++;
-            //        i++;
-            //    }
-            //}
-
+            ICollection<GameAction> gameActions = new List<GameAction>();
+            var player = forPlayer ? gameState.Player : gameState.Partner;
+            
             foreach (var item in kitchen.Equipments)
             {
-                if (Validator.CanUseWithEquipment(gameState.Player.Item, item))
+                if (Validator.CanUseWithEquipment(player.Item, item))
                 {
                     gameActions.Add(GameAction.UseAction(kitchen.EquipmentPosition[item]));
                 }
             }
 
-            foreach (var point in gameState.Player.Position.AdjacentPoints)
+            foreach (var point in player.Position.AdjacentPoints)
             {
                 if (kitchen.GetItem(point) != MapItem.EmptyTable)
                 {
@@ -892,12 +889,73 @@ namespace code_a_la_mode
                 gameActions.Add(GameAction.UseAction(item.Key));
             }
 
-            foreach (var action in gameActions)
+            return gameActions;
+        }
+    }
+
+    internal interface ISolver
+    {
+        GameAction Solve(IKitchen kitchen, GameState gameState);
+    }
+
+    internal class BestFirstSearchSolver : ISolver
+    {
+        private readonly IGameEvaluator _gameEvaluator;
+        private readonly IActionEvaluator _actionEvaluator;
+        private readonly IActionsGenerator _actionsGenerator;
+
+        public BestFirstSearchSolver(IGameEvaluator gameEvaluator, IActionEvaluator actionEvaluator, IActionsGenerator actionsGenerator)
+        {
+            _gameEvaluator = gameEvaluator;
+            _actionEvaluator = actionEvaluator;
+            _actionsGenerator = actionsGenerator;
+        }
+
+        public GameAction Solve(IKitchen kitchen, GameState gameState)
+        {
+            //int i = 0;
+            //for (int j = 0; i < 90000000; i++)
+            //{
+            //    i++;
+            //    i++;
+            //    i++;
+            //    i++;
+            //    for (int k = 0; i < 4000; i++)
+            //    {
+            //        i++;
+            //        i++;
+            //        i++;
+            //        i++;
+            //    }
+            //}
+
+            
+            throw new NotImplementedException();
+        }
+    }
+
+    internal class BruteForceSolver : ISolver
+    {
+        private readonly IActionEvaluator _actionEvaluator;
+        private readonly IActionsGenerator _actionsGenerator;
+
+        public BruteForceSolver(IActionEvaluator actionEvaluator, IActionsGenerator actionsGenerator)
+        {
+            this._actionEvaluator = actionEvaluator;
+            this._actionsGenerator = actionsGenerator;
+        }
+
+        public GameAction Solve(IKitchen kitchen, GameState gameState)
+        {
+            var actions = _actionsGenerator.GenerateActions(kitchen, gameState).ToList();
+
+            foreach (var action in actions)
             {
                 Console.Error.WriteLineAsync($"{action} -> {_actionEvaluator.Evaluate(kitchen, gameState, action)}");
             }
 
-            return gameActions.OrderByDescending((action) => _actionEvaluator.Evaluate(kitchen, gameState, action)).First();
+            return actions.OrderByDescending((action) => _actionEvaluator.Evaluate(kitchen, gameState, action))
+                .First();
         }
     }
 
@@ -953,7 +1011,8 @@ namespace code_a_la_mode
                         if (!requirements.NeedsDesserts)
                         {
                             //Use equipment
-                            return GameAction.UseAction(kitchen.EquipmentPosition[requirements.Equipment], "Going to use equipment");
+                            return GameAction.UseAction(kitchen.EquipmentPosition[requirements.Equipment],
+                                "Going to use equipment");
                         }
                     }
                 }
@@ -1006,7 +1065,8 @@ namespace code_a_la_mode
                 }
 
                 //Get dish
-                return GameAction.UseAction(kitchen.EquipmentPosition[Equipment.Dishwasher], "Going to place item in dish.");
+                return GameAction.UseAction(kitchen.EquipmentPosition[Equipment.Dishwasher],
+                    "Going to place item in dish.");
             }
 
             //I have desserts in hand (In a dish), I can complete a dish and return
@@ -1039,12 +1099,15 @@ namespace code_a_la_mode
                     if (!requirements.NeedsDesserts && Validator.CanUseWithEquipment(hand, requirements.Equipment))
                     {
                         //Use equipment
-                        return GameAction.UseAction(kitchen.EquipmentPosition[requirements.Equipment], "Going to use equipment");
+                        return GameAction.UseAction(kitchen.EquipmentPosition[requirements.Equipment],
+                            "Going to use equipment");
                     }
                 }
 
                 //TODO: Drop close to useful point of continuation.
-                return GameAction.UseAction(kitchen.ClosestEmptyTableToPoint(kitchen.EquipmentPosition[Equipment.Window]), "Dropping partially made dish close to window.");
+                return GameAction.UseAction(
+                    kitchen.ClosestEmptyTableToPoint(kitchen.EquipmentPosition[Equipment.Window]),
+                    "Dropping partially made dish close to window.");
             }
 
             //Pick order and start execution
@@ -1066,7 +1129,8 @@ namespace code_a_la_mode
                 }
 
                 //Use equipment
-                return GameAction.UseAction(kitchen.EquipmentPosition[requirements.Equipment], "Going to use equipment");
+                return GameAction.UseAction(kitchen.EquipmentPosition[requirements.Equipment],
+                    "Going to use equipment");
             }
 
             return GameAction.WaitAction("Nothing to Do. Waiting...");
@@ -1077,7 +1141,7 @@ namespace code_a_la_mode
     {
         public GameAction Solve(IKitchen kitchen, GameState gameState)
         {
-            Action action = (Action)Randomizer.Get().Next(3);
+            Action action = (Action) Randomizer.Get().Next(3);
 
             GameAction gameAction = new GameAction(action)
             {
@@ -1104,14 +1168,14 @@ namespace code_a_la_mode
     internal class DefaultGameEvaluator : IGameEvaluator
     {
         private const double OrderAwardCoef = 0.5;
-        private const double OtherCompletenessCoef = 0;//0.2;
-        private const double PlayerItemCompletenessCoef = 0;//0.9;
+        private const double OtherCompletenessCoef = 0; //0.2;
+        private const double PlayerItemCompletenessCoef = 0; //0.9;
         private const double TravelDistanceCoef = 0.00;
         private const double OrdersCountCoef = -10;
 
         private const double CompleteRequirementsCoef = 0.4;
         private const double RequirementIngredientCoef = 0.8;
-        private const double ProcessedDessertCoef = 0;//0.5;
+        private const double ProcessedDessertCoef = 0; //0.5;
         private const double CorrectDessertOrderCoef = 0.7;
 
         private const double PlayerCompleteRequirementsCoef = 0.3;
@@ -1148,7 +1212,8 @@ namespace code_a_la_mode
             return score;
         }
 
-        private static double EvaluateForOrder(IKitchen kitchen, GameState gameState, Order order, double maxAward, IDictionary<string, bool> existingTableItem)
+        private static double EvaluateForOrder(IKitchen kitchen, GameState gameState, Order order, double maxAward,
+            IDictionary<string, bool> existingTableItem)
         {
             double score = 0;
             score -= order.AwardPoints / maxAward * OrderAwardCoef;
@@ -1193,7 +1258,8 @@ namespace code_a_la_mode
                             score += 1 * CompleteRequirementsCoef;
                             score += requirement.NeedsDesserts ? 1 * ProcessedDessertCoef : 0;
 
-                            if (dessertIndex != requirementIndex && tableItemComposition.HasDish && !isPlayerComposition)
+                            if (dessertIndex != requirementIndex && tableItemComposition.HasDish &&
+                                !isPlayerComposition)
                             {
                                 score -= 1 * CorrectDessertOrderCoef;
                             }
@@ -1216,7 +1282,6 @@ namespace code_a_la_mode
                             }
                         }
                     }
-
                 }
 
                 existingTableItem[tableItem] = true;
@@ -1242,8 +1307,8 @@ namespace code_a_la_mode
                         score += 1 * PlayerCompleteRequirementsCoef;
                         score += requirement.NeedsDesserts ? 1 * PlayerProcessedDessertCoef : 0;
 
-                        if (dessertIndex != requirementIndex)// && playerItemComposition.HasDish)
-                        {                          
+                        if (dessertIndex != requirementIndex) // && playerItemComposition.HasDish)
+                        {
                             score -= 1 * PlayerCorrectDessertOrderCoef;
                         }
                     }
@@ -1294,7 +1359,8 @@ namespace code_a_la_mode
         private const double TravelDistanceCoef = 0.05;
         private const double NoProgressCoef = 5;
 
-        private readonly IDictionary<Guid, IDictionary<GameAction, double>> _cache = new Dictionary<Guid, IDictionary<GameAction, double>>();
+        private readonly IDictionary<Guid, IDictionary<GameAction, double>> _cache =
+            new Dictionary<Guid, IDictionary<GameAction, double>>();
 
         public DefaultActionEvaluator(IGameEvaluator gameEvaluator, IGameSimulator gameSimulator)
         {
@@ -1410,7 +1476,7 @@ namespace code_a_la_mode
 
                         if (Array.Exists(currentState.WaitingOrders, order => order.Item == player.Item))
                         {
-                            waitingOrders.Remove(waitingOrders.First((order) => order.Item == player.Item));
+                            waitingOrders.Remove(waitingOrders.First(order => order.Item == player.Item));
                             player.Item = Constants.None;
                             break;
                         }
@@ -1433,7 +1499,8 @@ namespace code_a_la_mode
                             if (player.Item.StartsWith(Constants.Dish, StringComparison.InvariantCulture))
                             {
                                 //table has a dish so invalid
-                                if (occupiedTables[action.Position].StartsWith(Constants.Dish, StringComparison.InvariantCulture))
+                                if (occupiedTables[action.Position]
+                                    .StartsWith(Constants.Dish, StringComparison.InvariantCulture))
                                 {
                                     return currentState;
                                 }
@@ -1454,9 +1521,9 @@ namespace code_a_la_mode
                             //player has blueberries or chopped dough and table has chopped dough or blueberries
                             // equals raw tart
                             if ((player.Item == Constants.DessertStrings[Dessert.ChoppedDough] &&
-                                occupiedTables[action.Position] == Constants.DessertStrings[Dessert.Blueberries]) ||
+                                 occupiedTables[action.Position] == Constants.DessertStrings[Dessert.Blueberries]) ||
                                 (player.Item == Constants.DessertStrings[Dessert.Blueberries] &&
-                                occupiedTables[action.Position] == Constants.DessertStrings[Dessert.ChoppedDough]))
+                                 occupiedTables[action.Position] == Constants.DessertStrings[Dessert.ChoppedDough]))
                             {
                                 player.Item = Constants.DessertStrings[Dessert.RawTart];
                                 occupiedTables.Remove(action.Position);
@@ -1482,7 +1549,6 @@ namespace code_a_la_mode
                         //I'm not sure if we still do the move operation (verify)
                         return currentState;
                 }
-                //TODO: Simulate all use cases
             }
 
             return new GameState
@@ -1499,7 +1565,8 @@ namespace code_a_la_mode
 
         private static bool UseChoppingBoard(ref string carriedItem)
         {
-            if (carriedItem != Constants.DessertStrings[Dessert.Strawberries] && carriedItem != Constants.DessertStrings[Dessert.Dough])
+            if (carriedItem != Constants.DessertStrings[Dessert.Strawberries] &&
+                carriedItem != Constants.DessertStrings[Dessert.Dough])
             {
                 return false;
             }
@@ -1522,10 +1589,9 @@ namespace code_a_la_mode
             {
                 return false;
             }
-            
+
             carriedItem = Constants.DessertStrings[Dessert.RawTart];
             return true;
-
         }
 
         private static bool UseStrawberryCrate(ref string carriedItem)
@@ -1551,7 +1617,7 @@ namespace code_a_la_mode
             {
                 return false;
             }
-            
+
             if (carriedItem.Contains(Constants.DessertStrings[dessert]))
             {
                 return false;
@@ -1559,7 +1625,6 @@ namespace code_a_la_mode
 
             carriedItem += "-" + Constants.DessertStrings[dessert];
             return true;
-
         }
 
         private static bool UseDishwasher(ref string carriedItem, bool areDishesAvailable)
@@ -1595,9 +1660,25 @@ namespace code_a_la_mode
     {
         private static void Main_()
         {
-            int[] a = { 1, 2, 3 };
-            int[] b = { 2, 1, 3 };
-            var c = a.Except(b).ToArray();
+            GameState a = new GameState();
+            GameState b = new GameState();
+            GameState c = new GameState
+            {
+                TurnsLeft = 300,
+                Partner = new Player(0, 1, Constants.None),
+                Player = new Player(2, 5, Constants.Dish)
+            };
+
+            var pa = new Player(0, 1, Constants.None);
+            var pl = new Player(2, 5, Constants.Dish);
+            var pa1 = new Player(0, 1, Constants.DessertStrings[Dessert.Blueberries]);
+            var pl1 = new Player(2, 5, Constants.None);
+            
+            Console.WriteLine(a.GetHashCode());
+            Console.WriteLine(b.GetHashCode());
+            Console.WriteLine(c.GetHashCode());
+//            Console.WriteLine(pa1.GetHashCode());
+
             Console.ReadLine();
         }
 
@@ -1606,8 +1687,9 @@ namespace code_a_la_mode
             IKitchen kitchen = new ArrayKitchen();
             IGameSimulator simulator = new DefaultGameSimulator();
             IGameEvaluator gameEvaluator = new DefaultGameEvaluator();
+            IActionsGenerator actionsGenerator = new DefaultActionsGenerator();
             IActionEvaluator actionEvaluator = new DefaultActionEvaluator(gameEvaluator, simulator);
-            ISolver solver = new BruteForceSolver(actionEvaluator);//new ManualSolver();
+            ISolver solver = new BruteForceSolver(actionEvaluator, actionsGenerator); //new ManualSolver();
 
             string[] inputs;
             int numAllCustomers = int.Parse(ReadInputLine());
@@ -1695,10 +1777,8 @@ namespace code_a_la_mode
                     };
                 }
 
-                Array.Sort(gameState.WaitingOrders, delegate (Order a, Order b)
-                {
-                    return b.AwardPoints - a.AwardPoints;
-                });
+                Array.Sort(gameState.WaitingOrders,
+                    delegate(Order a, Order b) { return b.AwardPoints - a.AwardPoints; });
 
                 watch.Stop();
                 Console.Error.WriteLineAsync($"Initialization Time: {watch.ElapsedMilliseconds} ms");
